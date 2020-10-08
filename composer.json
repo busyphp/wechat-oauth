@@ -1,0 +1,30 @@
+{
+	"name"        : "busyphp/wechat-oauth",
+	"type"        : "library",
+	"description" : "",
+	"authors"     : [
+		{
+			"name"  : "busy^life",
+			"email" : "busy.life@qq.com"
+		}
+	],
+	"license"     : "Apache-2.0",
+	"require"     : {
+		"php"                 : ">=7.1.0",
+		"busyphp/busyphp"     : "^3.0",
+		"busyphp/wechat-base" : "^1.0",
+		"busyphp/oauth"       : "^1.0",
+		"ext-json"            : "*"
+	},
+	"require-dev" : {
+		"symfony/var-dumper" : "^4.2"
+	},
+	"autoload"    : {
+		"psr-4" : {
+			"BusyPHP\\wechat\\oauth\\" : "src"
+		}
+	},
+	"config"      : {
+		"preferred-install" : "dist"
+	}
+}
