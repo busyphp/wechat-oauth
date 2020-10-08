@@ -6,7 +6,7 @@ use BusyPHP\exception\ParamInvalidException;
 use BusyPHP\helper\net\Http;
 use BusyPHP\helper\util\Str;
 use BusyPHP\oauth\interfaces\OAuth;
-use BusyPHP\oauth\interfaces\OAuth_Info;
+use BusyPHP\oauth\interfaces\OAuthInfo;
 use BusyPHP\oauth\OAuthType;
 use BusyPHP\wechat\WeChat;
 use think\response\Redirect;
@@ -39,7 +39,7 @@ class WeChatPublicOAuth extends WeChat implements OAuth
     protected $avatar;
     
     /**
-     * @var OAuth_Info
+     * @var OAuthInfo
      */
     protected $oauthInfo;
     
@@ -160,7 +160,7 @@ class WeChatPublicOAuth extends WeChat implements OAuth
     
     /**
      * 获取用户信息，该方法可能会多次触发，请自行处理重复处理锁
-     * @return OAuth_Info
+     * @return OAuthInfo
      * @throws WeChatOAuthException
      * @throws ParamInvalidException
      */
@@ -179,12 +179,12 @@ class WeChatPublicOAuth extends WeChat implements OAuth
             $result = $this->parseResult($result);
             
             
-            $info = new OAuth_Info($this);
+            $info = new OAuthInfo($this);
             $info->setUserInfo($result);
             $info->setOpenId($result['openid']);
             $info->setNickname($result['nickname']);
             $info->setAvatar($result['headimgurl']);
-            $info->setSex(OAuth_Info::parseSex($result['sex']));
+            $info->setSex(OAuthInfo::parseSex($result['sex']));
             if ($result['unionid']) {
                 $info->setUnionId($result['unionid']);
             }
