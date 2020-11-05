@@ -12,9 +12,10 @@
 	"require"     : {
 		"php"                 : ">=7.1.0",
 		"busyphp/busyphp"     : "^3.0",
-		"busyphp/wechat-base" : "^1.0",
-		"busyphp/oauth"       : "^1.0",
-		"ext-json"            : "*"
+		"busyphp/wechat-base" : "^1.0.3",
+		"busyphp/oauth"       : "^1.0.4",
+		"ext-json"            : "*",
+		"ext-openssl"         : "*"
 	},
 	"require-dev" : {
 		"symfony/var-dumper" : "^4.2"
