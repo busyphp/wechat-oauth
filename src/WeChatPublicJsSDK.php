@@ -87,8 +87,8 @@ class WeChatPublicJsSDK extends WeChat
             }
             
             $result = json_decode($result, true);
-            if ($result['errcode'] > 0) {
-                throw new WeChatOAuthException($result['errmsg'], $result['errcode']);
+            if (($result['errcode'] ?? 0) > 0) {
+                throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
             }
             if (!$result['access_token']) {
                 throw new WeChatOAuthException('无法获取accessToken');

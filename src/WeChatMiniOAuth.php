@@ -191,8 +191,8 @@ class WeChatMiniOAuth extends OAuthApp
         }
         
         $result = json_decode($result, true);
-        if ($result['errcode'] != 0) {
-            throw new WeChatOAuthException($result['errmsg'], $result['errcode']);
+        if (($result['errcode'] ?? 0) != 0) {
+            throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
         }
         
         if (!$result['session_key'] || !$result['openid']) {

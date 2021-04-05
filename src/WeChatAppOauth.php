@@ -78,7 +78,7 @@ class WeChatAppOauth extends OAuthApp
             }
             
             $result = json_decode($result, true);
-            if ($result['errcode'] != 0) {
+            if (($result['errcode'] ?? 0) != 0) {
                 throw new AppException("验证AccessToken失败: {$result['errmsg']} [{$result['errcode']}]");
             }
             
