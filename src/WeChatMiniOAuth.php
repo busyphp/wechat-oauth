@@ -3,13 +3,14 @@
 namespace BusyPHP\wechat\oauth;
 
 use BusyPHP\App;
-use BusyPHP\exception\AppException;
 use BusyPHP\exception\ParamInvalidException;
-use BusyPHP\helper\net\Http;
+use BusyPHP\helper\HttpHelper;
+use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuthApp;
 use BusyPHP\oauth\interfaces\OAuthInfo;
-use BusyPHP\oauth\OAuthType;
 use BusyPHP\wechat\WeChatConfig;
+use think\Container;
+use Throwable;
 
 /**
  * 微信小程序登录
@@ -63,13 +64,21 @@ class WeChatMiniOAuth extends OAuthApp
      * @param WeChatMiniOauthData $data
      * @throws ParamInvalidException
      */
-    public function __construct(WeChatMiniOauthData $data)
+    public function __construct(?WeChatMiniOauthData $data = null)
     {
         parent::__construct($data);
         
-        $this->app       = app();
+        $this->app       = App::getInstance();
         $this->appId     = $this->getConfig('mini.app_id');
         $this->appSecret = $this->getConfig('mini.app_secret');
+        
+        if (!$this->appId) {
+            throw new ParamInvalidException('mini.app_id');
+        }
+        
+        if (!$this->appSecret) {
+            throw new ParamInvalidException('mini.app_secret');
+        }
         
         if (!is_null($data)) {
             if (!$data instanceof WeChatMiniOauthData) {
@@ -99,7 +108,7 @@ class WeChatMiniOAuth extends OAuthApp
      * 获取登录类型
      * @return int
      */
-    public function getType()
+    public function getType() : int
     {
         return OAuthType::TYPE_WECHAT_MIME;
     }
@@ -109,7 +118,7 @@ class WeChatMiniOAuth extends OAuthApp
      * 获取厂商类型
      * @return int
      */
-    public function getUnionType()
+    public function getUnionType() : int
     {
         return OAuthType::COMPANY_WECHAT;
     }
@@ -118,16 +127,16 @@ class WeChatMiniOAuth extends OAuthApp
     /**
      * 获取用户信息，该方法可能会多次触发，请自行处理重复处理锁
      * @return OAuthInfo
-     * @throws AppException
      */
-    public function onGetInfo()
+    public function onGetInfo() : OAuthInfo
     {
         // 解密数据
         if (!$this->isVerify) {
             $result = static::getSessionByCode($this->data->code);
             $this->data->setInfo($this->decryptData($this->data->encryptedData, $this->data->iv, $result['session_key']));
-            
-            $this->isVerify = true;
+            $this->data->openId  = $result['openid'];
+            $this->data->unionId = $result['union_id'];
+            $this->isVerify      = true;
         }
         
         $info = new OAuthInfo($this);
@@ -176,7 +185,7 @@ class WeChatMiniOAuth extends OAuthApp
      * @return array 返回数组包含键：openid、union_id、session_key
      * @throws WeChatOAuthException
      */
-    public static function getSessionByCode($code)
+    public static function getSessionByCode(string $code) : array
     {
         $code = trim($code);
         if (isset(self::$session[$code])) {
@@ -184,18 +193,14 @@ class WeChatMiniOAuth extends OAuthApp
         }
         
         try {
-            $self   = new self(null);
-            $result = Http::get("https://api.weixin.qq.com/sns/jscode2session?appid={$self->appId}&secret={$self->appSecret}&js_code={$code}&grant_type=authorization_code");
-        } catch (AppException $e) {
+            $self   = self::getInstance();
+            $result = HttpHelper::get("https://api.weixin.qq.com/sns/jscode2session?appid={$self->appId}&secret={$self->appSecret}&js_code={$code}&grant_type=authorization_code");
+        } catch (Throwable $e) {
             throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
         }
         
-        $result = json_decode($result, true);
-        if (($result['errcode'] ?? 0) != 0) {
-            throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
-        }
-        
-        if (!$result['session_key'] || !$result['openid']) {
+        $result = WeChatPublicOAuth::parseResult($result);
+        if (empty($result['session_key']) || empty($result['openid'])) {
             throw new WeChatOAuthException('换取的票据数据异常');
         }
         
@@ -217,7 +222,7 @@ class WeChatMiniOAuth extends OAuthApp
      * @return array
      * @throws WeChatOAuthException
      */
-    public static function decryptData($encryptedData, $iv, $sessionKey)
+    public static function decryptData(string $encryptedData, string $iv, string $sessionKey) : array
     {
         if (strlen($sessionKey) != 24) {
             throw new WeChatOAuthException('encodingAesKey 非法');
@@ -231,13 +236,12 @@ class WeChatMiniOAuth extends OAuthApp
         $aesIV     = base64_decode($iv);
         $aesCipher = base64_decode($encryptedData);
         $result    = openssl_decrypt($aesCipher, "AES-128-CBC", $aesKey, 1, $aesIV);
-        $result    = json_decode($result, true);
+        $result    = json_decode((string) $result, true) ?: [];
         if (!$result) {
             throw new WeChatOAuthException('数据解密失败');
         }
         
-        $self = new self(null);
-        if ($result['watermark']['appid'] != $self->appId) {
+        if (($result['watermark']['appid'] ?? '') != self::getInstance()->appId) {
             throw new WeChatOAuthException('数据非法');
         }
         
@@ -253,14 +257,29 @@ class WeChatMiniOAuth extends OAuthApp
      * @param string $iv 与数据一同返回的初始向量
      * @param bool   $returnRaw 是否返回原样数据，默认支返回不带区号的手机号，否则返回array
      * @return string|array 手机号码
-     * @throws WeChatOAuthException
      */
-    public static function getPhone($code, $encryptedData, $iv, $returnRaw = false)
+    public static function getPhone(string $code, string $encryptedData, string $iv, bool $returnRaw = false)
     {
         $result = self::getSessionByCode($code);
+        $data   = self::decryptData($encryptedData, $iv, $result['session_key']);
+        if ($returnRaw) {
+            return $data;
+        }
         
-        $data = static::decryptData($encryptedData, $iv, $result['session_key']);
+        if (empty($data['purePhoneNumber'])) {
+            throw new ParamInvalidException('purePhoneNumber');
+        }
         
-        return $returnRaw ? $data : $data['purePhoneNumber'];
+        return $data['purePhoneNumber'];
+    }
+    
+    
+    /**
+     * 获取单例
+     * @return WeChatMiniOAuth
+     */
+    public static function getInstance() : self
+    {
+        return Container::getInstance()->make(WeChatMiniOAuth::class, [null]);
     }
 }

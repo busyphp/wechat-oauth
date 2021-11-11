@@ -2,16 +2,16 @@
 
 namespace BusyPHP\wechat\oauth;
 
-use BusyPHP\exception\AppException;
+use RuntimeException;
 use Throwable;
 
 /**
  * 微信OAuth登录异常类
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/7/8 下午10:56 上午 WeChatException.php $
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午8:29 WeChatOAuthException.php $
  */
-class WeChatOAuthException extends AppException
+class WeChatOAuthException extends RuntimeException
 {
     private $errors = [
         -1      => '系统繁忙，此时请开发者稍候再试',
@@ -186,14 +186,9 @@ class WeChatOAuthException extends AppException
     
     public function __construct($message = "", $code = 0, Throwable $previous = null)
     {
-        $error = $this->errors[$code] ?? '';
-        $this->setData('WECHAT ERROR', [
-            'Message' => $message,
-            'Code'    => $code,
-            'Error'   => $error
-        ]);
-        
+        $error   = $this->errors[$code] ?? '';
         $message = $error ?: $message;
-        parent::__construct("{$message}($code)", $code, $previous);
+        
+        parent::__construct($code ? "{$message}, code: {$code}" : $message, $code, $previous);
     }
 }

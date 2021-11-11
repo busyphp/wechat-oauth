@@ -4,26 +4,35 @@ namespace BusyPHP\wechat\oauth;
 
 use BusyPHP\exception\AppException;
 use BusyPHP\exception\ParamInvalidException;
-use BusyPHP\helper\net\Http;
+use BusyPHP\helper\HttpHelper;
+use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuthApp;
 use BusyPHP\oauth\interfaces\OAuthInfo;
-use BusyPHP\oauth\OAuthType;
 use Throwable;
 
 /**
  * 微信APP端登录
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/7/9 下午7:34 下午 WeChatAppOauth.php $
- * @see https://developers.weixin.qq.com/doc/oplatform/Mobile_App/WeChat_Login/Authorized_API_call_UnionID.html
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午9:18 WeChatAppOauth.php $
  * @property WeChatAppOauthData $data
+ * @see https://developers.weixin.qq.com/doc/oplatform/Mobile_App/WeChat_Login/Authorized_API_call_UnionID.html
  */
 class WeChatAppOauth extends OAuthApp
 {
+    /**
+     * @var string
+     */
     protected $openId;
     
+    /**
+     * @var string
+     */
     protected $avatar;
     
+    /**
+     * @var bool
+     */
     protected $isVerify = false;
     
     
@@ -45,9 +54,9 @@ class WeChatAppOauth extends OAuthApp
     
     /**
      * 获取登录类型
-     * @return string
+     * @return int
      */
-    public function getType()
+    public function getType() : int
     {
         return OAuthType::TYPE_WECHAT_APP;
     }
@@ -55,9 +64,9 @@ class WeChatAppOauth extends OAuthApp
     
     /**
      * 获取厂商类型
-     * @return string
+     * @return int
      */
-    public function getUnionType()
+    public function getUnionType() : int
     {
         return OAuthType::COMPANY_WECHAT;
     }
@@ -68,20 +77,16 @@ class WeChatAppOauth extends OAuthApp
      * @return OAuthInfo
      * @throws AppException
      */
-    public function onGetInfo()
+    public function onGetInfo() : OAuthInfo
     {
         if (!$this->isVerify) {
             try {
-                $result = Http::get("https://api.weixin.qq.com/sns/auth?access_token={$this->data->accessToken}&openid={$this->openId}");
+                $result = HttpHelper::get("https://api.weixin.qq.com/sns/auth?access_token={$this->data->accessToken}&openid={$this->openId}");
             } catch (Throwable $e) {
                 throw new AppException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
             }
             
-            $result = json_decode($result, true);
-            if (($result['errcode'] ?? 0) != 0) {
-                throw new AppException("验证AccessToken失败: {$result['errmsg']} [{$result['errcode']}]");
-            }
-            
+            WeChatPublicOAuth::parseResult($result);
             $this->isVerify = true;
         }
         

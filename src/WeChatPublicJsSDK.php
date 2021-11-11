@@ -1,23 +1,28 @@
 <?php
+declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
 
+use BusyPHP\App;
 use BusyPHP\Cache;
-use BusyPHP\helper\net\Http;
-use BusyPHP\helper\util\Str;
-use BusyPHP\wechat\WeChat;
+use BusyPHP\exception\ParamInvalidException;
+use BusyPHP\helper\HttpHelper;
+use BusyPHP\helper\StringHelper;
+use BusyPHP\wechat\WeChatConfig;
 use think\Response;
 use Throwable;
 
 /**
  * 微信公众号JS SDK
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/7/8 下午11:01 上午 WeChatJsSDK.php $
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午8:58 WeChatPublicJsSDK.php $
  */
-class WeChatPublicJsSDK extends WeChat
+class WeChatPublicJsSDK
 {
+    use WeChatConfig;
+    
     /**
      * @var string
      */
@@ -31,10 +36,15 @@ class WeChatPublicJsSDK extends WeChat
     
     public function __construct()
     {
-        parent::__construct();
-        
         $this->appId     = $this->getConfig('public.app_id');
         $this->appSecret = $this->getConfig('public.app_secret');
+        
+        if (!$this->appId) {
+            throw new ParamInvalidException('public.app_id');
+        }
+        if (!$this->appSecret) {
+            throw new ParamInvalidException('public.app_secret');
+        }
     }
     
     
@@ -43,23 +53,19 @@ class WeChatPublicJsSDK extends WeChat
      * @return string
      * @throws WeChatOAuthException
      */
-    private function getJsApiTicket()
+    private function getJsApiTicket() : string
     {
         $ticket = Cache::get($this, 'ticket');
         if (!$ticket) {
             $accessToken = $this->getJsAccessToken();
             try {
-                $result = Http::get("https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token={$accessToken}");
+                $result = HttpHelper::get("https://api.weixin.qq.com/cgi-bin/ticket/getticket?type=jsapi&access_token={$accessToken}");
             } catch (Throwable $e) {
                 throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
             }
             
-            $result = json_decode($result, true);
-            if ($result['errcode'] != 0) {
-                throw new WeChatOAuthException($result['errmsg'], $result['errcode']);
-            }
-            
-            if (!$result['ticket']) {
+            $result = WeChatPublicOAuth::parseResult($result);
+            if (empty($result['ticket'])) {
                 throw new WeChatOAuthException('无法获取Ticket');
             }
             
@@ -81,18 +87,16 @@ class WeChatPublicJsSDK extends WeChat
         $accessToken = Cache::get($this, 'access_token');
         if (!$accessToken) {
             try {
-                $result = Http::get("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={$this->appId}&secret={$this->appSecret}");
+                $result = HttpHelper::get("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={$this->appId}&secret={$this->appSecret}");
             } catch (Throwable $e) {
                 throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
             }
             
-            $result = json_decode($result, true);
-            if (($result['errcode'] ?? 0) > 0) {
-                throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
-            }
-            if (!$result['access_token']) {
+            $result = WeChatPublicOAuth::parseResult($result);
+            if (empty($result['access_token'])) {
                 throw new WeChatOAuthException('无法获取accessToken');
             }
+            
             $accessToken = $result['access_token'];
             Cache::set($this, 'access_token', $accessToken, 7000);
         }
@@ -108,10 +112,11 @@ class WeChatPublicJsSDK extends WeChat
      */
     public function getSignPackage()
     {
+        $request   = App::getInstance()->request;
         $ticket    = $this->getJsApiTicket();
-        $url       = $_SERVER['HTTP_REFERER'] ?: request()->url();
-        $timestamp = trim(time());
-        $nonceStr  = Str::random(16);
+        $url       = $request->server('HTTP_REFERER') ?: request()->url();
+        $timestamp = time() . "";
+        $nonceStr  = StringHelper::random(16);
         
         // 这里参数的顺序要按照 key 值 ASCII 码升序排序
         $string    = "jsapi_ticket={$ticket}&noncestr={$nonceStr}&timestamp={$timestamp}&url={$url}";
@@ -132,7 +137,7 @@ class WeChatPublicJsSDK extends WeChat
      * @param string $message 提示的消息内容
      * @return Response
      */
-    public static function closeBrowser($message = '')
+    public static function closeBrowser(string $message = '') : Response
     {
         $message = trim($message);
         $script  = '';
@@ -141,6 +146,7 @@ class WeChatPublicJsSDK extends WeChat
             $script  = 'alert("' . $message . '");';
         }
         
+        $http = App::getInstance()->request->isSsl() ? 'https' : 'http';
         $data = <<<HTML
 <!doctype html>
 <html lang="en">
@@ -151,7 +157,7 @@ class WeChatPublicJsSDK extends WeChat
     <title>消息</title>
 </head>
 <body>
-    <script src='http://res.wx.qq.com/open/js/jweixin-1.0.0.js'></script>
+    <script src='{$http}://res.wx.qq.com/open/js/jweixin-1.0.0.js'></script>
     <script>
         {$script}
         setInterval(function() {

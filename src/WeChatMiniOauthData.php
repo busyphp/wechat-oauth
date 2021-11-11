@@ -1,15 +1,16 @@
 <?php
+declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
-
+use BusyPHP\helper\ArrayHelper;
 use BusyPHP\oauth\interfaces\OAuthAppData;
 
 /**
  * 微信小程序登录参数结构
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/10/30 下午9:40 WeChatMiniOauthData.php $
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午9:03 WeChatMiniOauthData.php $
  * @property string $nickName 昵称
  * @property string $openId openid
  * @property int    $gender 性别 1男 2女 0 未知
@@ -52,18 +53,26 @@ class WeChatMiniOauthData extends OAuthAppData
      */
     public $info = [];
     
+    /**
+     * 签名
+     * @var string
+     */
+    public $signature;
+    
     
     /**
      * WeChatMiniOauthData constructor.
      * @param string $code 临时登录凭证code
      * @param string $iv 向量
      * @param string $encryptedData 用户数据
+     * @param string $signature 签名
      */
-    public function __construct($code, $iv, $encryptedData)
+    public function __construct(string $code, string $iv, string $encryptedData, string $signature)
     {
         $this->code          = trim($code);
         $this->iv            = trim($iv);
         $this->encryptedData = trim($encryptedData);
+        $this->signature     = $signature;
     }
     
     
@@ -96,7 +105,7 @@ class WeChatMiniOauthData extends OAuthAppData
             case 'gender':
                 return intval($this->info[$name] ?? 0);
             default:
-                return $this->info[$name];
+                return ArrayHelper::get($this->info, $name);
         }
     }
 }

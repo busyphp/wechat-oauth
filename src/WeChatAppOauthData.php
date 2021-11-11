@@ -1,4 +1,5 @@
 <?php
+declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
@@ -7,8 +8,8 @@ use BusyPHP\oauth\interfaces\OAuthAppData;
 /**
  * 微信APP登录数据结构
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/10/8 下午12:41 下午 WeChatAppOauthData.php $
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午9:18 WeChatAppOauthData.php $
  */
 class WeChatAppOauthData extends OAuthAppData
 {
@@ -83,7 +84,7 @@ class WeChatAppOauthData extends OAuthAppData
     public function __construct($accessToken, $data = '')
     {
         if (is_string($data)) {
-            $data = json_decode($data, true);
+            $data = json_decode($data, true) ?: [];
         }
         
         $this->accessToken = $accessToken;

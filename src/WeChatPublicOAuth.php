@@ -1,25 +1,29 @@
 <?php
+declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
+use BusyPHP\App;
 use BusyPHP\exception\ParamInvalidException;
-use BusyPHP\helper\net\Http;
-use BusyPHP\helper\util\Str;
+use BusyPHP\helper\HttpHelper;
+use BusyPHP\helper\StringHelper;
+use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuth;
 use BusyPHP\oauth\interfaces\OAuthInfo;
-use BusyPHP\oauth\OAuthType;
-use BusyPHP\wechat\WeChat;
+use BusyPHP\wechat\WeChatConfig;
 use think\response\Redirect;
 use Throwable;
 
 /**
  * 微信OAuth2.0登录
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2019 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
- * @version $Id: 2020/7/8 下午3:29 下午 WeChatOAuth.php $
+ * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @version $Id: 2021/11/11 上午8:30 WeChatPublicOAuth.php $
  */
-class WeChatPublicOAuth extends WeChat implements OAuth
+class WeChatPublicOAuth implements OAuth
 {
+    use WeChatConfig;
+    
     /**
      * 公众号appId
      * @var string
@@ -66,25 +70,26 @@ class WeChatPublicOAuth extends WeChat implements OAuth
      * WeChatOAuth constructor.
      * @param bool $isHidden 是否静默授权，默认否
      */
-    public function __construct($isHidden = false)
+    public function __construct(bool $isHidden = false)
     {
-        parent::__construct();
-        
-        $this->appId     = $this->getConfig('public.app_id');
-        $this->appSecret = $this->getConfig('public.app_secret');
+        $this->appId     = $this->getConfig('public.app_id', '');
+        $this->appSecret = $this->getConfig('public.app_secret', '');
         $this->isHidden  = $isHidden;
         
-        // 干掉这2个属性，否则无法序列化
-        $this->app     = null;
-        $this->request = null;
+        if (!$this->appId) {
+            throw new ParamInvalidException('public.app_id');
+        }
+        if (!$this->appSecret) {
+            throw new ParamInvalidException('public.app_secret');
+        }
     }
     
     
     /**
      * 获取登录类型
-     * @return string
+     * @return int
      */
-    public function getType()
+    public function getType() : int
     {
         return OAuthType::TYPE_WECHAT_PUBLIC;
     }
@@ -92,9 +97,9 @@ class WeChatPublicOAuth extends WeChat implements OAuth
     
     /**
      * 获取厂商类型
-     * @return string
+     * @return int
      */
-    public function getUnionType()
+    public function getUnionType() : int
     {
         return OAuthType::COMPANY_WECHAT;
     }
@@ -105,11 +110,11 @@ class WeChatPublicOAuth extends WeChat implements OAuth
      * @param string $redirectUri 回调地址
      * @return Redirect
      */
-    public function onApplyAuth($redirectUri)
+    public function onApplyAuth(string $redirectUri)
     {
         $redirectUri = urlencode($redirectUri);
         $type        = $this->isHidden ? 'snsapi_base' : 'snsapi_userinfo';
-        $state       = Str::random(32);
+        $state       = StringHelper::random(32);
         
         return redirect("https://open.weixin.qq.com/connect/oauth2/authorize?appid={$this->appId}&redirect_uri={$redirectUri}&response_type=code&scope={$type}&state={$state}#wechat_redirect");
     }
@@ -118,23 +123,23 @@ class WeChatPublicOAuth extends WeChat implements OAuth
     /**
      * 换取票据
      * @return string
-     * @throws WeChatOAuthException
      */
-    public function onGetAccessToken()
+    public function onGetAccessToken() : string
     {
         if (!$this->accessToken || !$this->openId) {
-            $code = trim($_GET['code']);
+            $code = trim(App::getInstance()->request->get('code/s', '', 'trim'));
             if (!$code) {
-                return false;
+                throw new ParamInvalidException('code');
             }
             
             try {
-                $result = Http::init()
+                $result = HttpHelper::init()
                     ->get("https://api.weixin.qq.com/sns/oauth2/access_token?appid={$this->appId}&secret={$this->appSecret}&code={$code}&grant_type=authorization_code");
             } catch (Throwable $e) {
                 throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
             }
-            $result            = $this->parseResult($result);
+            
+            $result            = self::parseResult($result);
             $this->openId      = $result['openid'];
             $this->accessToken = $result['access_token'];
         }
@@ -145,14 +150,11 @@ class WeChatPublicOAuth extends WeChat implements OAuth
     
     /**
      * 获取 OpenId
-     * @return string|false
-     * @throws WeChatOAuthException
+     * @return string
      */
-    public function getOpenId()
+    public function getOpenId() : string
     {
-        if (false === $this->onGetAccessToken()) {
-            return false;
-        }
+        $this->onGetAccessToken();
         
         return $this->openId;
     }
@@ -164,28 +166,29 @@ class WeChatPublicOAuth extends WeChat implements OAuth
      * @throws WeChatOAuthException
      * @throws ParamInvalidException
      */
-    public function onGetInfo()
+    public function onGetInfo() : OAuthInfo
     {
         if (!$this->oauthInfo) {
             $this->onGetAccessToken();
             
             try {
-                $result = Http::init()
+                $result = HttpHelper::init()
                     ->get("https://api.weixin.qq.com/sns/userinfo?access_token={$this->accessToken}&openid={$this->openId}&lang=zh_CN");
             } catch (Throwable $e) {
                 throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
             }
             
-            $result = $this->parseResult($result);
+            $result = self::parseResult($result);
             
             
             $info = new OAuthInfo($this);
             $info->setUserInfo($result);
-            $info->setOpenId($result['openid']);
-            $info->setNickname($result['nickname']);
-            $info->setAvatar($result['headimgurl']);
-            $info->setSex(OAuthInfo::parseSex($result['sex']));
-            if ($result['unionid']) {
+            $info->setOpenId($result['openid'] ?? '');
+            $info->setNickname($result['nickname'] ?? '');
+            $info->setAvatar($result['headimgurl'] ?? '');
+            $info->setSex(OAuthInfo::parseSex($result['sex'] ?? ''));
+            
+            if (!empty($result['unionid'])) {
                 $info->setUnionId($result['unionid']);
             }
             
@@ -230,14 +233,14 @@ class WeChatPublicOAuth extends WeChat implements OAuth
      * @return array
      * @throws WeChatOAuthException
      */
-    protected function parseResult($result)
+    public static function parseResult($result) : array
     {
-        $result = json_decode($result, true);
+        $result = json_decode((string) $result, true) ?: [];
         if (!$result) {
             throw new WeChatOAuthException('系统异常，请稍候再试');
         }
         
-        if (($result['errcode'] ?? 0) != 0) {
+        if (($result['errcode'] ?? -1) != 0) {
             throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
         }
         
