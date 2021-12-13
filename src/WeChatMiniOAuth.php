@@ -9,7 +9,7 @@ use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuthApp;
 use BusyPHP\oauth\interfaces\OAuthInfo;
 use BusyPHP\wechat\WeChatConfig;
-use think\Container;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -61,45 +61,45 @@ class WeChatMiniOAuth extends OAuthApp
     
     /**
      * WeChatMiniOAuth constructor.
-     * @param WeChatMiniOauthData $data
-     * @throws ParamInvalidException
+     * @param WeChatMiniOauthData $data 三方登录数据
+     * @param string              $accountId 三方账户ID，用于区分同一种登录方式，不同账户
      */
-    public function __construct(?WeChatMiniOauthData $data = null)
+    public function __construct(WeChatMiniOauthData $data = null, string $accountId = '')
     {
-        parent::__construct($data);
+        parent::__construct($data, $accountId);
         
-        $this->app       = App::getInstance();
-        $this->appId     = $this->getConfig('mini.app_id');
-        $this->appSecret = $this->getConfig('mini.app_secret');
+        $this->app = App::getInstance();
+        
+        if (!$accountId) {
+            $this->appId     = $this->getWeChatConfig('mini.app_id', '');
+            $this->appSecret = $this->getWeChatConfig('mini.app_secret', '');
+        } else {
+            $this->appId     = $this->getWeChatConfig("mini.multi.{$accountId}.app_id", '');
+            $this->appSecret = $this->getWeChatConfig("mini.multi.{$accountId}.app_secret", '');
+        }
         
         if (!$this->appId) {
-            throw new ParamInvalidException('mini.app_id');
+            throw new RuntimeException('请到config/extend/wechat.php配置mini.app_id');
         }
         
         if (!$this->appSecret) {
-            throw new ParamInvalidException('mini.app_secret');
+            throw new RuntimeException('请到config/extend/wechat.php配置mini.app_secret');
         }
         
-        if (!is_null($data)) {
-            if (!$data instanceof WeChatMiniOauthData) {
-                throw new ParamInvalidException('data');
-            }
-            
-            if (!$this->data->code) {
-                throw new ParamInvalidException('data.code');
-            }
-            
-            if (!$this->data->signature) {
-                throw new ParamInvalidException('data.signature');
-            }
-            
-            if (!$this->data->iv) {
-                throw new ParamInvalidException('data.iv');
-            }
-            
-            if (!$this->data->encryptedData) {
-                throw new ParamInvalidException('data.encryptedData');
-            }
+        if (!$this->data->code) {
+            throw new ParamInvalidException('$this->data->code');
+        }
+        
+        if (!$this->data->signature) {
+            throw new ParamInvalidException('$this->data->signature');
+        }
+        
+        if (!$this->data->iv) {
+            throw new ParamInvalidException('$this->data->iv');
+        }
+        
+        if (!$this->data->encryptedData) {
+            throw new ParamInvalidException('$this->data->encryptedData');
         }
     }
     
@@ -125,6 +125,16 @@ class WeChatMiniOAuth extends OAuthApp
     
     
     /**
+     * 获取三方APPID
+     * @return string
+     */
+    public function getAppId() : string
+    {
+        return $this->appId;
+    }
+    
+    
+    /**
      * 获取用户信息，该方法可能会多次触发，请自行处理重复处理锁
      * @return OAuthInfo
      */
@@ -132,8 +142,8 @@ class WeChatMiniOAuth extends OAuthApp
     {
         // 解密数据
         if (!$this->isVerify) {
-            $result = static::getSessionByCode($this->data->code);
-            $this->data->setInfo($this->decryptData($this->data->encryptedData, $this->data->iv, $result['session_key']));
+            $result = static::getSessionByCode($this->data->code, $this->appId, $this->appSecret);
+            $this->data->setInfo($this->decryptData($this->appId, $this->data->encryptedData, $this->data->iv, $result['session_key']));
             $this->data->openId  = $result['openid'];
             $this->data->unionId = $result['union_id'];
             $this->isVerify      = true;
@@ -181,11 +191,12 @@ class WeChatMiniOAuth extends OAuthApp
     
     /**
      * 通过小程序code换取会话密钥和openid及unionId
-     * @param string $code
+     * @param string $code 登录code
+     * @param string $appId 小程序APPID
+     * @param string $appSecret 小程序秘钥
      * @return array 返回数组包含键：openid、union_id、session_key
-     * @throws WeChatOAuthException
      */
-    public static function getSessionByCode(string $code) : array
+    public static function getSessionByCode(string $code, string $appId, string $appSecret) : array
     {
         $code = trim($code);
         if (isset(self::$session[$code])) {
@@ -193,8 +204,7 @@ class WeChatMiniOAuth extends OAuthApp
         }
         
         try {
-            $self   = self::getInstance();
-            $result = HttpHelper::get("https://api.weixin.qq.com/sns/jscode2session?appid={$self->appId}&secret={$self->appSecret}&js_code={$code}&grant_type=authorization_code");
+            $result = HttpHelper::get("https://api.weixin.qq.com/sns/jscode2session?appid={$appId}&secret={$appSecret}&js_code={$code}&grant_type=authorization_code");
         } catch (Throwable $e) {
             throw new WeChatOAuthException("HTTP请求失败: {$e->getMessage()} [{$e->getCode()}]");
         }
@@ -216,13 +226,13 @@ class WeChatMiniOAuth extends OAuthApp
     
     /**
      * 检验数据的真实性，并且获取解密后的明文.
+     * @param string $appId 小程序APPID
      * @param string $encryptedData 加密的用户数据
      * @param string $iv 与用户数据一同返回的初始向量
      * @param string $sessionKey 会话密钥
      * @return array
-     * @throws WeChatOAuthException
      */
-    public static function decryptData(string $encryptedData, string $iv, string $sessionKey) : array
+    public static function decryptData(string $appId, string $encryptedData, string $iv, string $sessionKey) : array
     {
         if (strlen($sessionKey) != 24) {
             throw new WeChatOAuthException('encodingAesKey 非法');
@@ -241,45 +251,10 @@ class WeChatMiniOAuth extends OAuthApp
             throw new WeChatOAuthException('数据解密失败');
         }
         
-        if (($result['watermark']['appid'] ?? '') != self::getInstance()->appId) {
+        if (($result['watermark']['appid'] ?? '') != $appId) {
             throw new WeChatOAuthException('数据非法');
         }
         
         return $result;
-    }
-    
-    
-    /**
-     * 获取手机号，
-     * 详见: {@link https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/getPhoneNumber.html}
-     * @param string $code
-     * @param string $encryptedData 加密的手机号数据
-     * @param string $iv 与数据一同返回的初始向量
-     * @param bool   $returnRaw 是否返回原样数据，默认支返回不带区号的手机号，否则返回array
-     * @return string|array 手机号码
-     */
-    public static function getPhone(string $code, string $encryptedData, string $iv, bool $returnRaw = false)
-    {
-        $result = self::getSessionByCode($code);
-        $data   = self::decryptData($encryptedData, $iv, $result['session_key']);
-        if ($returnRaw) {
-            return $data;
-        }
-        
-        if (empty($data['purePhoneNumber'])) {
-            throw new ParamInvalidException('purePhoneNumber');
-        }
-        
-        return $data['purePhoneNumber'];
-    }
-    
-    
-    /**
-     * 获取单例
-     * @return WeChatMiniOAuth
-     */
-    public static function getInstance() : self
-    {
-        return Container::getInstance()->make(WeChatMiniOAuth::class, [null]);
     }
 }

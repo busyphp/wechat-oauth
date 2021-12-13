@@ -11,6 +11,7 @@ use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuth;
 use BusyPHP\oauth\interfaces\OAuthInfo;
 use BusyPHP\wechat\WeChatConfig;
+use RuntimeException;
 use think\response\Redirect;
 use Throwable;
 
@@ -68,19 +69,27 @@ class WeChatPublicOAuth implements OAuth
     
     /**
      * WeChatOAuth constructor.
-     * @param bool $isHidden 是否静默授权，默认否
+     * @param bool   $isHidden 是否静默授权，默认否
+     * @param string $accountId 三方账户ID，用于区分同一种登录方式，不同账户
      */
-    public function __construct(bool $isHidden = false)
+    public function __construct(bool $isHidden = false, $accountId = '')
     {
-        $this->appId     = $this->getConfig('public.app_id', '');
-        $this->appSecret = $this->getConfig('public.app_secret', '');
-        $this->isHidden  = $isHidden;
+        if (!$accountId) {
+            $this->appId     = $this->getWeChatConfig('public.app_id');
+            $this->appSecret = $this->getWeChatConfig('public.app_secret');
+        } else {
+            $this->appId     = $this->getWeChatConfig("public.multi.{$accountId}.app_id");
+            $this->appSecret = $this->getWeChatConfig("public.multi.{$accountId}.app_secret");
+        }
+        
+        $this->isHidden = $isHidden;
         
         if (!$this->appId) {
-            throw new ParamInvalidException('public.app_id');
+            throw new RuntimeException('请到config/extend/wechat.php配置public.app_id');
         }
+        
         if (!$this->appSecret) {
-            throw new ParamInvalidException('public.app_secret');
+            throw new RuntimeException('请到config/extend/wechat.php配置public.app_secret');
         }
     }
     
@@ -102,6 +111,16 @@ class WeChatPublicOAuth implements OAuth
     public function getUnionType() : int
     {
         return OAuthType::COMPANY_WECHAT;
+    }
+    
+    
+    /**
+     * 获取三方APPID
+     * @return string
+     */
+    public function getAppId() : string
+    {
+        return $this->appId;
     }
     
     

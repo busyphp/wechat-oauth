@@ -3,58 +3,24 @@ declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
-use BusyPHP\oauth\interfaces\OAuthAppData;
+use BusyPHP\exception\ParamInvalidException;
+use BusyPHP\model\ArrayOption;
 
 /**
  * 微信APP登录数据结构
  * @author busy^life <busy.life@qq.com>
  * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
  * @version $Id: 2021/11/11 上午9:18 WeChatAppOauthData.php $
+ * @property string $province 省份
+ * @property string $city 城市
+ * @property string $country 国家
+ * @property string $headimgurl 头像地址
+ * @property string $nickname 昵称
+ * @property string $openid OPENID
+ * @property string $unionid unionId
  */
-class WeChatAppOauthData extends OAuthAppData
+class WeChatAppOauthData extends ArrayOption
 {
-    /**
-     * 省份
-     * @var string
-     */
-    public $province = '';
-    
-    /**
-     * 城市
-     * @var string
-     */
-    public $city = '';
-    
-    /**
-     * 国家
-     * @var string
-     */
-    public $country = '';
-    
-    /**
-     * 头像地址
-     * @var string
-     */
-    public $headimgurl = '';
-    
-    /**
-     * 昵称
-     * @var string
-     */
-    public $nickname = '';
-    
-    /**
-     * OPENID
-     * @var string
-     */
-    public $openid = '';
-    
-    /**
-     * unionId
-     * @var string
-     */
-    public $unionid = '';
-    
     /**
      * 性别 1=男, 2=女
      * @var int
@@ -65,6 +31,11 @@ class WeChatAppOauthData extends OAuthAppData
      * @var string
      */
     public $accessToken = '';
+    
+    /**
+     * @var array
+     */
+    private $data;
     
     
     /**
@@ -81,25 +52,25 @@ class WeChatAppOauthData extends OAuthAppData
      *      "unionid"    : "unionid 如果有"
      * }
      */
-    public function __construct($accessToken, $data = '')
+    public function __construct(string $accessToken, $data = '')
     {
+        if (!$accessToken) {
+            throw new ParamInvalidException('$accessToken');
+        }
+        
         if (is_string($data)) {
             $data = json_decode($data, true) ?: [];
         }
         
-        $this->accessToken = $accessToken;
-        $this->province    = $data['province'] ?? '';
-        $this->city        = $data['city'] ?? '';
-        $this->country     = $data['country'] ?? '';
-        $this->headimgurl  = $data['headimgurl'] ?? '';
-        $this->nickname    = $data['nickname'] ?? '';
-        $this->openid      = $data['openid'] ?? '';
-        $this->unionid     = $data['unionid'] ?? '';
+        parent::__construct($data);
         
-        $this->sex = $data['sex'] ?? 0;
-        $this->sex = intval($this->sex);
-        $this->sex = $this->sex > 2 ? 2 : $this->sex;
-        $this->sex = $this->sex < 0 ? 0 : $this->sex;
+        
+        $this->data        = $data;
+        $this->accessToken = $accessToken;
+        $this->sex         = $data['sex'] ?? 0;
+        $this->sex         = intval($this->sex);
+        $this->sex         = $this->sex > 2 ? 2 : $this->sex;
+        $this->sex         = $this->sex < 0 ? 0 : $this->sex;
     }
     
     
@@ -107,11 +78,8 @@ class WeChatAppOauthData extends OAuthAppData
      * 获取数据
      * @return array
      */
-    function getData()
+    public function getData()
     {
-        $data = get_object_vars($this);
-        unset($data['accessToken']);
-        
-        return $data;
+        return $this->data;
     }
 }

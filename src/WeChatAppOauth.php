@@ -8,6 +8,8 @@ use BusyPHP\helper\HttpHelper;
 use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuthApp;
 use BusyPHP\oauth\interfaces\OAuthInfo;
+use BusyPHP\wechat\WeChatConfig;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -20,6 +22,8 @@ use Throwable;
  */
 class WeChatAppOauth extends OAuthApp
 {
+    use WeChatConfig;
+    
     /**
      * @var string
      */
@@ -35,15 +39,30 @@ class WeChatAppOauth extends OAuthApp
      */
     protected $isVerify = false;
     
+    /**
+     * @var string
+     */
+    protected $appId;
+    
     
     /**
      * WeChatAppOauth constructor.
-     * @param $data
-     * @throws ParamInvalidException
+     * @param WeChatAppOauthData $data 三方登录数据
+     * @param string             $accountId 三方账户ID，用于区分同一种登录方式，不同账户
      */
-    public function __construct($data)
+    public function __construct(WeChatAppOauthData $data, string $accountId = '')
     {
         parent::__construct($data);
+        
+        if (!$accountId) {
+            $this->appId = $this->getWeChatConfig('app.app_id', '');
+        } else {
+            $this->appId = $this->getWeChatConfig("app.multi.{$accountId}.app_id", '');
+        }
+        
+        if (!$this->appId) {
+            throw new RuntimeException('请到config/extend/wechat.php中配置app.app_id');
+        }
         
         $this->openId = trim($this->data->openid);
         if (!$this->openId) {
@@ -69,6 +88,16 @@ class WeChatAppOauth extends OAuthApp
     public function getUnionType() : int
     {
         return OAuthType::COMPANY_WECHAT;
+    }
+    
+    
+    /**
+     * 获取三方APPID
+     * @return string
+     */
+    public function getAppId() : string
+    {
+        return $this->appId;
     }
     
     

@@ -4,7 +4,6 @@ declare(strict_types = 1);
 namespace BusyPHP\wechat\oauth;
 
 use BusyPHP\helper\ArrayHelper;
-use BusyPHP\oauth\interfaces\OAuthAppData;
 
 /**
  * 微信小程序登录参数结构
@@ -24,7 +23,7 @@ use BusyPHP\oauth\interfaces\OAuthAppData;
  * @property int    $timestamp TIMESTAMP
  * @link https://developers.weixin.qq.com/miniprogram/dev/api/open-api/user-info/wx.getUserInfo.html
  */
-class WeChatMiniOauthData extends OAuthAppData
+class WeChatMiniOauthData
 {
     /**
      * 加密算法的初始向量，
