@@ -34,10 +34,19 @@ class WeChatPublicJsSDK
     protected $appSecret;
     
     
-    public function __construct()
+    /**
+     * WeChatPublicJsSDK constructor.
+     * @param string $accountId 公众号ID，用于区分多个公众号
+     */
+    public function __construct(string $accountId = '')
     {
-        $this->appId     = $this->getConfig('public.app_id');
-        $this->appSecret = $this->getConfig('public.app_secret');
+        if (!$accountId) {
+            $this->appId     = $this->getWeChatConfig('public.app_id');
+            $this->appSecret = $this->getWeChatConfig('public.app_secret');
+        } else {
+            $this->appId     = $this->getWeChatConfig("public.multi.{$accountId}.app_id");
+            $this->appSecret = $this->getWeChatConfig("public.multi.{$accountId}.app_secret");
+        }
         
         if (!$this->appId) {
             throw new ParamInvalidException('public.app_id');
@@ -55,7 +64,7 @@ class WeChatPublicJsSDK
      */
     private function getJsApiTicket() : string
     {
-        $ticket = Cache::get($this, 'ticket');
+        $ticket = Cache::get($this, "ticket_{$this->appId}");
         if (!$ticket) {
             $accessToken = $this->getJsAccessToken();
             try {
@@ -84,7 +93,7 @@ class WeChatPublicJsSDK
      */
     private function getJsAccessToken()
     {
-        $accessToken = Cache::get($this, 'access_token');
+        $accessToken = Cache::get($this, "access_token_{$this->appId}");
         if (!$accessToken) {
             try {
                 $result = HttpHelper::get("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={$this->appId}&secret={$this->appSecret}");
