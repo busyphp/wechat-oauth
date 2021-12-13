@@ -61,6 +61,7 @@ class WeChatPublicJsSDK
      * 获取Ticket
      * @return string
      * @throws WeChatOAuthException
+     * @see https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/JS-SDK.html#54
      */
     private function getJsApiTicket() : string
     {
@@ -90,6 +91,7 @@ class WeChatPublicJsSDK
      * 获取AccessToken
      * @return string
      * @throws WeChatOAuthException
+     * @see https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html
      */
     private function getJsAccessToken()
     {

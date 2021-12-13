@@ -259,8 +259,8 @@ class WeChatPublicOAuth implements OAuth
             throw new WeChatOAuthException('系统异常，请稍候再试');
         }
         
-        if (isset($result['errcode'])) {
-            throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode'] ?? 0);
+        if (isset($result['errcode']) && $result['errcode'] != 0) {
+            throw new WeChatOAuthException($result['errmsg'] ?? '', $result['errcode']);
         }
         
         return $result;
