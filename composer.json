@@ -18,11 +18,10 @@
 	],
 	"license"     : "CC-BY-NC-4.0",
 	"require"     : {
-		"php"                 : ">=7.1.0",
-		"busyphp/wechat-base" : "^2.0.0",
-		"busyphp/oauth"       : "^2.0.0",
 		"ext-json"            : "*",
-		"ext-openssl"         : "*"
+		"ext-openssl"         : "*",
+		"busyphp/wechat-base" : "^2.0.0",
+		"busyphp/oauth"       : "^2.0.0"
 	},
 	"require-dev" : {
 		"symfony/var-dumper" : "^4.2"
@@ -36,7 +35,10 @@
 		"preferred-install" : "dist"
 	},
 	"extra"       : {
-		"busyphp" : {
+		"branch-alias" : {
+			"dev-master" : "2.0.x-dev"
+		},
+		"busyphp"      : {
 			"manager" : {
 				"name" : "微信登录模块"
 			}

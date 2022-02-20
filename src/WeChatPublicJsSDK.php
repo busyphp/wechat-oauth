@@ -3,13 +3,12 @@ declare(strict_types = 1);
 
 namespace BusyPHP\wechat\oauth;
 
-
 use BusyPHP\App;
 use BusyPHP\Cache;
 use BusyPHP\exception\ParamInvalidException;
 use BusyPHP\helper\HttpHelper;
 use BusyPHP\helper\StringHelper;
-use BusyPHP\wechat\WeChatConfig;
+use BusyPHP\wechat\WithWeChatConfig;
 use think\Response;
 use Throwable;
 
@@ -21,7 +20,7 @@ use Throwable;
  */
 class WeChatPublicJsSDK
 {
-    use WeChatConfig;
+    use WithWeChatConfig;
     
     /**
      * @var string

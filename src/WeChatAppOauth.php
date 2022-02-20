@@ -8,7 +8,7 @@ use BusyPHP\helper\HttpHelper;
 use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuthApp;
 use BusyPHP\oauth\interfaces\OAuthInfo;
-use BusyPHP\wechat\WeChatConfig;
+use BusyPHP\wechat\WithWeChatConfig;
 use RuntimeException;
 use Throwable;
 
@@ -22,7 +22,7 @@ use Throwable;
  */
 class WeChatAppOauth extends OAuthApp
 {
-    use WeChatConfig;
+    use WithWeChatConfig;
     
     /**
      * @var string

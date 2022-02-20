@@ -4,7 +4,7 @@
 namespace BusyPHP\wechat\oauth;
 
 use BusyPHP\exception\ParamInvalidException;
-use BusyPHP\wechat\WeChatConfig;
+use BusyPHP\wechat\WithWeChatConfig;
 use RuntimeException;
 
 /**
@@ -16,7 +16,7 @@ use RuntimeException;
  */
 class WeChatMiniPhone
 {
-    use WeChatConfig;
+    use WithWeChatConfig;
     
     /**
      * @var string

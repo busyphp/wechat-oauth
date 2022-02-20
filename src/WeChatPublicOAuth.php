@@ -10,7 +10,7 @@ use BusyPHP\helper\StringHelper;
 use BusyPHP\oauth\defines\OAuthType;
 use BusyPHP\oauth\interfaces\OAuth;
 use BusyPHP\oauth\interfaces\OAuthInfo;
-use BusyPHP\wechat\WeChatConfig;
+use BusyPHP\wechat\WithWeChatConfig;
 use RuntimeException;
 use think\response\Redirect;
 use Throwable;
@@ -23,7 +23,7 @@ use Throwable;
  */
 class WeChatPublicOAuth implements OAuth
 {
-    use WeChatConfig;
+    use WithWeChatConfig;
     
     /**
      * 公众号appId
