@@ -1,6 +1,7 @@
 <?php
+declare(strict_types = 1);
 
-namespace BusyPHP\wechat\oauth;
+namespace BusyPHP\oauth\driver\exception;
 
 use RuntimeException;
 use Throwable;
@@ -8,7 +9,7 @@ use Throwable;
 /**
  * 微信OAuth登录异常类
  * @author busy^life <busy.life@qq.com>
- * @copyright (c) 2015--2021 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
+ * @copyright (c) 2015--2023 ShanXi Han Tuo Technology Co.,Ltd. All rights reserved.
  * @version $Id: 2021/11/11 上午8:29 WeChatOAuthException.php $
  */
 class WeChatOAuthException extends RuntimeException

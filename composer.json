@@ -1,7 +1,7 @@
 {
 	"name"        : "busyphp/wechat-oauth",
 	"type"        : "library",
-	"description" : "用于BusyPHP微信登录，支持公众号、小程序、App端。支持公众号JSSDK",
+	"description" : "用于BusyPHP微信登录，支持公众号、小程序、App端",
 	"homepage"    : "http://www.harter.cn/?form=BusyPHP&plugin=busyphp/wechat-oauth",
 	"keywords"    : [
 		"微信登录",
@@ -16,29 +16,25 @@
 			"email" : "busy.life@qq.com"
 		}
 	],
-	"license"     : "CC-BY-NC-4.0",
+	"license"     : "Apache-2.0",
 	"require"     : {
-		"ext-json"            : "*",
-		"ext-openssl"         : "*",
-		"busyphp/wechat-base" : "^2.0.0",
-		"busyphp/oauth"       : "^2.0.0"
+		"ext-json"      : "*",
+		"ext-openssl"   : "*",
+		"busyphp/oauth" : "^3.0"
 	},
 	"require-dev" : {
 		"symfony/var-dumper" : "^4.2"
 	},
 	"autoload"    : {
 		"psr-4" : {
-			"BusyPHP\\wechat\\oauth\\" : "src"
+			"BusyPHP\\oauth\\driver\\" : "src"
 		}
 	},
 	"config"      : {
 		"preferred-install" : "dist"
 	},
 	"extra"       : {
-		"branch-alias" : {
-			"dev-master" : "2.0.x-dev"
-		},
-		"busyphp"      : {
+		"busyphp" : {
 			"manager" : {
 				"name" : "微信登录模块"
 			}
