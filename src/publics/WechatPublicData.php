@@ -13,14 +13,14 @@ use BusyPHP\oauth\interfaces\OAuthDataInterface;
  */
 class WechatPublicData implements OAuthDataInterface
 {
-    public bool $hidden = false;
+    public bool $hidden;
     
     
     /**
      * 构造函数
      * @param bool $hidden 是否静默登录
      */
-    public function __construct(bool $hidden)
+    public function __construct(bool $hidden = false)
     {
         $this->hidden = $hidden;
     }
