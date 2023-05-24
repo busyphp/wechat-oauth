@@ -17,6 +17,16 @@ class WechatPublicData implements OAuthDataInterface
     
     
     /**
+     * 构造函数
+     * @param bool $hidden 是否静默登录
+     */
+    public function __construct(bool $hidden)
+    {
+        $this->hidden = $hidden;
+    }
+    
+    
+    /**
      * 设置是否静默登录
      * @param bool $hidden
      * @return static
